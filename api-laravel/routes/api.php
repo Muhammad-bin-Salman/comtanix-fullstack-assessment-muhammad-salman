@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PublicQuoteRequestController;
+use App\Http\Controllers\Api\QuoteRequestAssignmentController;
 use App\Http\Controllers\Api\QuoteRequestController;
+use App\Http\Controllers\Api\QuoteRequestDeletionController;
 use App\Http\Controllers\Api\QuoteRequestStatusController;
 use Illuminate\Support\Facades\Route;
 
@@ -16,4 +18,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/quote-requests', [QuoteRequestController::class, 'index']);
     Route::get('/quote-requests/{quoteRequest}', [QuoteRequestController::class, 'show']);
     Route::patch('/quote-requests/{quoteRequest}/status', QuoteRequestStatusController::class);
+    Route::patch('/quote-requests/{quoteRequest}/assign', QuoteRequestAssignmentController::class);
+    Route::delete('/quote-requests/{quoteRequest}', QuoteRequestDeletionController::class);
 });
