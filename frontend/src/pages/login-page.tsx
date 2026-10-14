@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { getApiErrorMessage } from '../utils/errors';
 
@@ -41,6 +41,7 @@ export function LoginPage() {
         <p className="eyebrow">Comtanix assessment</p>
         <h1 id="login-title">Staff sign in</h1>
         <p className="muted">Use your admin or staff account to review quote requests.</p>
+        <p><Link to="/request-quote">Request a Quote</Link></p>
 
         {error && <div className="alert alert-error" role="alert">{error}</div>}
 

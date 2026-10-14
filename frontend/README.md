@@ -34,6 +34,7 @@ The dashboard uses Laravel Sanctum bearer tokens. The token is stored in `sessio
 ## Routes
 
 - `/login` — staff/admin sign-in
+- `/request-quote` — public quote submission with validation and honeypot protection
 - `/quotes` — searchable, filterable, sortable, paginated quote list
 - `/quotes/:quoteId` — quote details, permitted actions, and audit timeline
 

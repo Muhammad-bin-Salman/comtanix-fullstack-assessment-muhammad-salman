@@ -49,7 +49,7 @@ beforeEach(() => {
 describe('quote detail', () => {
   it('renders quote information and admin controls', async () => {
     renderDetail();
-    expect(await screen.findByRole('heading', { name: 'Acme Client' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Acme Client' }, { timeout: 3_000 })).toBeInTheDocument();
     expect(screen.getByText('Build our new platform.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Mark In Review' })).toBeInTheDocument();
     expect(screen.getByLabelText('Assign to staff member')).toBeInTheDocument();

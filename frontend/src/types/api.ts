@@ -90,3 +90,13 @@ export type AuditEventResponse = {
   data: AuditEvent[];
   meta: { page: number; per_page: number; total: number; total_pages: number };
 };
+
+export type PublicQuotePayload = {
+  client_name: string;
+  email: string;
+  company: string;
+  service_type: ServiceType;
+  budget_range: string;
+  message: string;
+  website: string;
+};
