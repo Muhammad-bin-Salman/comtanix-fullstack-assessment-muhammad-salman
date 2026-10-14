@@ -20,7 +20,11 @@ class QuoteRequestStatusController extends Controller
         Gate::authorize('updateStatus', $quoteRequest);
 
         $targetStatus = QuoteRequestStatus::from($request->validated('status'));
-        $updatedQuoteRequest = $updateStatus->execute($quoteRequest, $targetStatus);
+        $updatedQuoteRequest = $updateStatus->execute(
+            $quoteRequest,
+            $targetStatus,
+            (int) $request->user()->getKey(),
+        );
 
         return new QuoteRequestResource($updatedQuoteRequest->load('assignedUser'));
     }

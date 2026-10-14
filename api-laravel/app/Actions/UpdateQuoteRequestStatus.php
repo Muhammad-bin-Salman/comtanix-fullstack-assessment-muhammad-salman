@@ -4,16 +4,20 @@ namespace App\Actions;
 
 use App\Enums\QuoteRequestStatus;
 use App\Models\QuoteRequest;
+use App\Services\AuditEventPublisher;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class UpdateQuoteRequestStatus
 {
+    public function __construct(private AuditEventPublisher $auditEvents) {}
+
     public function execute(
         QuoteRequest $quoteRequest,
         QuoteRequestStatus $targetStatus,
+        int $actorId,
     ): QuoteRequest {
-        return DB::transaction(function () use ($quoteRequest, $targetStatus) {
+        return DB::transaction(function () use ($quoteRequest, $targetStatus, $actorId) {
             $persistedQuoteRequest = QuoteRequest::query()
                 ->lockForUpdate()
                 ->findOrFail($quoteRequest->getKey());
@@ -33,6 +37,16 @@ class UpdateQuoteRequestStatus
             $persistedQuoteRequest->update([
                 'status' => $targetStatus,
             ]);
+
+            $this->auditEvents->publish(
+                type: AuditEventPublisher::QUOTE_STATUS_CHANGED,
+                quoteRequestId: $persistedQuoteRequest->id,
+                actorId: $actorId,
+                data: [
+                    'from' => $currentStatus->value,
+                    'to' => $targetStatus->value,
+                ],
+            );
 
             return $persistedQuoteRequest;
         });

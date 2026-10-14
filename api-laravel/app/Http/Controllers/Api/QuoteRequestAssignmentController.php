@@ -20,7 +20,11 @@ class QuoteRequestAssignmentController extends Controller
         Gate::authorize('assign', $quoteRequest);
 
         $assignee = User::findOrFail($request->validated('assigned_user_id'));
-        $updatedQuoteRequest = $assignQuoteRequest->execute($quoteRequest, $assignee);
+        $updatedQuoteRequest = $assignQuoteRequest->execute(
+            $quoteRequest,
+            $assignee,
+            (int) $request->user()->getKey(),
+        );
 
         return new QuoteRequestResource($updatedQuoteRequest->load('assignedUser'));
     }
