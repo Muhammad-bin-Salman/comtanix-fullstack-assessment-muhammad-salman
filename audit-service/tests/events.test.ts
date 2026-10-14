@@ -1,4 +1,4 @@
-import { createHmac } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import request from 'supertest';
@@ -45,6 +45,18 @@ function postRaw(rawBody: string, signature?: string) {
   }
 
   return testRequest.send(rawBody);
+}
+
+async function createStoredEvent(overrides: Record<string, unknown> = {}) {
+  return AuditEvent.create({
+    eventId: randomUUID(),
+    type: 'quote.created',
+    quoteRequestId: 123,
+    actorId: null,
+    data: { status: 'new' },
+    occurredAt: new Date('2026-10-15T10:30:00.000Z'),
+    ...overrides,
+  });
 }
 
 beforeAll(async () => {
@@ -180,5 +192,150 @@ describe('POST /events', () => {
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
     expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
     expect(await AuditEvent.countDocuments()).toBe(1);
+  });
+});
+
+describe('GET /events', () => {
+  it('returns events newest first', async () => {
+    await createStoredEvent({ occurredAt: new Date('2026-10-15T10:00:00.000Z') });
+    const newest = await createStoredEvent({ occurredAt: new Date('2026-10-15T12:00:00.000Z') });
+    await createStoredEvent({ occurredAt: new Date('2026-10-15T11:00:00.000Z') });
+
+    const response = await request(app).get('/events').expect(200);
+
+    expect(response.body.data[0].eventId).toBe(newest.eventId);
+    expect(response.body.data.map((event: { occurredAt: string }) => event.occurredAt)).toEqual([
+      '2026-10-15T12:00:00.000Z',
+      '2026-10-15T11:00:00.000Z',
+      '2026-10-15T10:00:00.000Z',
+    ]);
+  });
+
+  it('filters by quoteRequestId', async () => {
+    await createStoredEvent({ quoteRequestId: 123 });
+    await createStoredEvent({ quoteRequestId: 456 });
+
+    const response = await request(app).get('/events?quoteRequestId=456').expect(200);
+
+    expect(response.body.data).toHaveLength(1);
+    expect(response.body.data[0].quoteRequestId).toBe(456);
+  });
+
+  it('filters by type', async () => {
+    await createStoredEvent({ type: 'quote.created' });
+    await createStoredEvent({ type: 'quote.status_changed', data: { from: 'new', to: 'in_review' } });
+
+    const response = await request(app).get('/events?type=quote.status_changed').expect(200);
+
+    expect(response.body.data).toHaveLength(1);
+    expect(response.body.data[0].type).toBe('quote.status_changed');
+  });
+
+  it('combines quoteRequestId and type filters', async () => {
+    await createStoredEvent({ quoteRequestId: 123, type: 'quote.assigned', data: { from: null, to: 2 } });
+    await createStoredEvent({ quoteRequestId: 123, type: 'quote.created' });
+    await createStoredEvent({ quoteRequestId: 456, type: 'quote.assigned', data: { from: null, to: 3 } });
+
+    const response = await request(app)
+      .get('/events?quoteRequestId=123&type=quote.assigned')
+      .expect(200);
+
+    expect(response.body.data).toHaveLength(1);
+    expect(response.body.data[0]).toMatchObject({
+      quoteRequestId: 123,
+      type: 'quote.assigned',
+    });
+  });
+
+  it('paginates results', async () => {
+    for (let index = 0; index < 5; index += 1) {
+      await createStoredEvent({ occurredAt: new Date(`2026-10-15T1${index}:00:00.000Z`) });
+    }
+
+    const response = await request(app).get('/events?page=2&per_page=2').expect(200);
+
+    expect(response.body.data).toHaveLength(2);
+    expect(response.body.data.map((event: { occurredAt: string }) => event.occurredAt)).toEqual([
+      '2026-10-15T12:00:00.000Z',
+      '2026-10-15T11:00:00.000Z',
+    ]);
+  });
+
+  it('returns correct pagination metadata', async () => {
+    await Promise.all(Array.from({ length: 5 }, () => createStoredEvent()));
+
+    const response = await request(app).get('/events?page=2&per_page=2').expect(200);
+
+    expect(response.body.meta).toEqual({
+      page: 2,
+      per_page: 2,
+      total: 5,
+      total_pages: 3,
+    });
+  });
+
+  it('rejects an invalid quoteRequestId', async () => {
+    const response = await request(app).get('/events?quoteRequestId=0').expect(422);
+
+    expect(response.body.message).toBe('The query parameters are invalid.');
+    expect(response.body.errors.quoteRequestId).toBeDefined();
+  });
+
+  it('rejects an invalid type', async () => {
+    const response = await request(app).get('/events?type=quote.deleted').expect(422);
+
+    expect(response.body.errors.type).toBeDefined();
+  });
+
+  it('rejects an invalid page', async () => {
+    const response = await request(app).get('/events?page=zero').expect(422);
+
+    expect(response.body.errors.page).toBeDefined();
+  });
+
+  it('rejects per_page values over 100', async () => {
+    const response = await request(app).get('/events?per_page=101').expect(422);
+
+    expect(response.body.errors.per_page).toBeDefined();
+  });
+
+  it('does not expose __v', async () => {
+    await createStoredEvent();
+
+    const response = await request(app).get('/events').expect(200);
+
+    expect(response.body.data[0]).not.toHaveProperty('__v');
+  });
+
+  it('does not expose MongoDB IDs or internal timestamps', async () => {
+    await createStoredEvent();
+
+    const response = await request(app).get('/events').expect(200);
+
+    expect(response.body.data[0]).not.toHaveProperty('_id');
+    expect(response.body.data[0]).not.toHaveProperty('createdAt');
+    expect(response.body.data[0]).not.toHaveProperty('updatedAt');
+    expect(Object.keys(response.body.data[0])).toEqual([
+      'eventId',
+      'type',
+      'quoteRequestId',
+      'actorId',
+      'data',
+      'occurredAt',
+    ]);
+  });
+
+  it('returns empty data with correct default metadata', async () => {
+    const response = await request(app).get('/events?quoteRequestId=999').expect(200);
+
+    expect(response.body).toEqual({
+      data: [],
+      meta: {
+        page: 1,
+        per_page: 20,
+        total: 0,
+        total_pages: 0,
+      },
+    });
   });
 });

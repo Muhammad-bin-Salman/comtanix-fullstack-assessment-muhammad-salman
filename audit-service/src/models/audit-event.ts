@@ -24,4 +24,7 @@ const auditEventSchema = new Schema<AuditEventDocument>({
   versionKey: false,
 });
 
+auditEventSchema.index({ quoteRequestId: 1, occurredAt: -1 });
+auditEventSchema.index({ type: 1, occurredAt: -1 });
+
 export const AuditEvent = model<AuditEventDocument>('AuditEvent', auditEventSchema);
