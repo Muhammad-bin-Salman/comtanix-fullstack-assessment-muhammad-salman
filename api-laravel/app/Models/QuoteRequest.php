@@ -14,6 +14,21 @@ class QuoteRequest extends Model
     /** @use HasFactory<QuoteRequestFactory> */
     use HasFactory, SoftDeletes;
 
+    public const SERVICE_TYPES = [
+        'web_development',
+        'mobile_app',
+        'crm',
+        'ecommerce',
+        'custom_software',
+    ];
+
+    public const BUDGET_RANGES = [
+        'under_5k',
+        '5k_10k',
+        '10k_25k',
+        '25k_plus',
+    ];
+
     /**
      * The attributes that are mass assignable.
      *
