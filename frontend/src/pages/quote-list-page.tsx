@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { listQuoteRequests, type QuoteListParams } from '../api/quotes';
 import { useDebouncedValue } from '../hooks/use-debounced-value';
 import type { PaginatedResponse, QuoteRequest } from '../types/api';
@@ -18,6 +18,7 @@ function positiveInteger(value: string | null, fallback: number): number {
 
 export function QuoteListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const urlSearch = searchParams.get('search') ?? '';
   const [searchInput, setSearchInput] = useState(urlSearch);
   const debouncedSearch = useDebouncedValue(searchInput.trim(), 400);
@@ -225,7 +226,11 @@ export function QuoteListPage() {
               <tbody>
                 {result.data.map((quote) => (
                   <tr key={quote.id}>
-                    <td className="cell-strong">{quote.client_name}</td>
+                    <td className="cell-strong">
+                      <Link to={`/quotes/${quote.id}`} state={{ fromSearch: location.search }}>
+                        {quote.client_name}
+                      </Link>
+                    </td>
                     <td><a href={`mailto:${quote.email}`}>{quote.email}</a></td>
                     <td>{quote.company ?? '—'}</td>
                     <td>{formatLabel(quote.service_type)}</td>

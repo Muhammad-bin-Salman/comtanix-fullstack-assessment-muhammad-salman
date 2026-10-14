@@ -4,7 +4,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './app';
 import { currentUserRequest, loginRequest, logoutRequest } from './api/auth';
-import { listQuoteRequests } from './api/quotes';
+import { assignQuoteRequest, deleteQuoteRequest, getQuoteRequest, listQuoteRequests, updateQuoteStatus } from './api/quotes';
+import { listQuoteAuditEvents } from './api/audit';
+import { listStaffUsers } from './api/staff';
 import { AuthProvider } from './auth/auth-provider';
 import { getStoredToken, storeToken } from './auth/storage';
 import type { PaginatedResponse, QuoteRequest, User } from './types/api';
@@ -17,7 +19,14 @@ vi.mock('./api/auth', () => ({
 
 vi.mock('./api/quotes', () => ({
   listQuoteRequests: vi.fn(),
+  getQuoteRequest: vi.fn(),
+  updateQuoteStatus: vi.fn(),
+  assignQuoteRequest: vi.fn(),
+  deleteQuoteRequest: vi.fn(),
 }));
+
+vi.mock('./api/audit', () => ({ listQuoteAuditEvents: vi.fn() }));
+vi.mock('./api/staff', () => ({ listStaffUsers: vi.fn() }));
 
 const admin: User = {
   id: 1,
@@ -83,6 +92,15 @@ beforeEach(() => {
   vi.mocked(loginRequest).mockResolvedValue({ token: 'test-token', user: admin });
   vi.mocked(logoutRequest).mockResolvedValue();
   vi.mocked(listQuoteRequests).mockResolvedValue(paginatedResult());
+  vi.mocked(getQuoteRequest).mockResolvedValue(quote);
+  vi.mocked(updateQuoteStatus).mockResolvedValue({ ...quote, status: 'in_review' });
+  vi.mocked(assignQuoteRequest).mockResolvedValue(quote);
+  vi.mocked(deleteQuoteRequest).mockResolvedValue();
+  vi.mocked(listStaffUsers).mockResolvedValue([]);
+  vi.mocked(listQuoteAuditEvents).mockResolvedValue({
+    data: [],
+    meta: { page: 1, per_page: 100, total: 0, total_pages: 0 },
+  });
 });
 
 describe('authentication', () => {
@@ -127,6 +145,17 @@ describe('quote list', () => {
     expect(await screen.findByText('Acme Client')).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'Web Development' })).toBeInTheDocument();
     expect(screen.getByText('Unassigned')).toBeInTheDocument();
+  });
+
+  it('navigates from a quote row to its detail page', async () => {
+    authenticate();
+    const user = userEvent.setup();
+    renderApp('/quotes');
+
+    await user.click(await screen.findByRole('link', { name: 'Acme Client' }));
+
+    expect(await screen.findByRole('heading', { name: 'Acme Client' })).toBeInTheDocument();
+    expect(getQuoteRequest).toHaveBeenCalledWith(42);
   });
 
   it('debounces search and resets the requested page', async () => {

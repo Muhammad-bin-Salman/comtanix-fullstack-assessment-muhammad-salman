@@ -70,3 +70,23 @@ export type ValidationErrorResponse = {
   message: string;
   errors?: Record<string, string[]>;
 };
+
+export type ResourceResponse<T> = { data: T };
+
+export type StaffUser = Pick<User, 'id' | 'name' | 'email'>;
+
+export type AuditEventType = 'quote.created' | 'quote.status_changed' | 'quote.assigned';
+
+export type AuditEvent = {
+  eventId: string;
+  type: AuditEventType;
+  quoteRequestId: number;
+  actorId: number | null;
+  data: Record<string, unknown>;
+  occurredAt: string;
+};
+
+export type AuditEventResponse = {
+  data: AuditEvent[];
+  meta: { page: number; per_page: number; total: number; total_pages: number };
+};
