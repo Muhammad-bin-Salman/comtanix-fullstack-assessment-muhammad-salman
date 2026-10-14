@@ -1,0 +1,159 @@
+{
+  "info": {
+    "_postman_id": "639a7d34-b6ab-4ea8-934d-a1db50ec173f",
+    "name": "Comtanix Laravel API",
+    "description": "Laravel Quote Request API review collection. Run an Admin or Staff login request to save its bearer token automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000" },
+    { "key": "token", "value": "" },
+    { "key": "quote_id", "value": "1" },
+    { "key": "staff_user_id", "value": "2" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login Admin",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "const response = pm.response.json();",
+                "if (response.token) { pm.collectionVariables.set('token', response.token); }"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@comtanix.test\",\n  \"password\": \"Password123!\"\n}" },
+            "url": "{{base_url}}/api/login"
+          }
+        },
+        {
+          "name": "Login Staff",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "const response = pm.response.json();",
+                "if (response.token) { pm.collectionVariables.set('token', response.token); }"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"staff1@comtanix.test\",\n  \"password\": \"Password123!\"\n}" },
+            "url": "{{base_url}}/api/login"
+          }
+        },
+        {
+          "name": "Current User",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/user"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public",
+      "item": [{
+        "name": "Submit Quote Request",
+        "request": {
+          "method": "POST",
+          "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+          "body": { "mode": "raw", "raw": "{\n  \"client_name\": \"Jane Client\",\n  \"email\": \"jane@example.com\",\n  \"company\": \"Example Ltd\",\n  \"service_type\": \"web_development\",\n  \"budget_range\": \"10k_25k\",\n  \"message\": \"We need a new customer-facing website.\",\n  \"website\": \"\"\n}" },
+          "url": "{{base_url}}/api/public/quote-requests"
+        }
+      }]
+    },
+    {
+      "name": "Quotes",
+      "item": [
+        {
+          "name": "List Quote Requests",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/quote-requests?per_page=15&sort_by=created_at&sort_direction=desc"
+          }
+        },
+        {
+          "name": "Search Quote Requests",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/quote-requests?search=Jane"
+          }
+        },
+        {
+          "name": "Filter By Status",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/quote-requests?status=in_review"
+          }
+        },
+        {
+          "name": "Quote Detail",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/quote-requests/{{quote_id}}"
+          }
+        },
+        {
+          "name": "Update Quote Status",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PATCH",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"in_review\"\n}" },
+            "url": "{{base_url}}/api/quote-requests/{{quote_id}}/status"
+          }
+        },
+        {
+          "name": "Assign Quote",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PATCH",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"assigned_user_id\": {{staff_user_id}}\n}" },
+            "url": "{{base_url}}/api/quote-requests/{{quote_id}}/assign"
+          }
+        },
+        {
+          "name": "Delete Quote",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/quote-requests/{{quote_id}}"
+          }
+        }
+      ]
+    }
+  ]
+}

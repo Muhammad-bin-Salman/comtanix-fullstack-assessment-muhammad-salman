@@ -1,66 +1,146 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel Quote Request API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Overview
 
-## About Laravel
+This Laravel 12 service manages staff authentication, public quote submissions, quote review and assignment workflows, role-based authorization, and asynchronous audit-event delivery to the companion audit service.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Requirements
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- PHP 8.2 or newer
+- Composer
+- MySQL or a compatible relational database
+- Laravel 12 dependencies installed through Composer
+- A Laravel queue worker for audit-event delivery
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Installation
 
-## Learning Laravel
+```powershell
+composer install
+Copy-Item .env.example .env
+php artisan key:generate
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Configure the `DB_*` values in `.env`, then run:
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+```powershell
+php artisan migrate
+php artisan db:seed
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+The seeder preserves existing quotes and only adds enough demo records to reach 200 active quote requests. It never truncates the table.
 
-## Laravel Sponsors
+## Seeded credentials
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+These accounts and their shared password are for local development and assessment demonstration only.
 
-### Premium Partners
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@comtanix.test` | `Password123!` |
+| Staff | `staff1@comtanix.test` | `Password123!` |
+| Staff | `staff2@comtanix.test` | `Password123!` |
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+Do not reuse these credentials in production.
 
-## Contributing
+## Running Laravel
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```powershell
+php artisan serve
+```
 
-## Code of Conduct
+The default local API URL is `http://127.0.0.1:8000`.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Queue worker
 
-## Security Vulnerabilities
+```powershell
+php artisan queue:work
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Audit publishing is asynchronous and requires a running queue worker. Keep `QUEUE_CONNECTION=database` so an unavailable audit service cannot block the main API request.
 
-## License
+## Audit configuration
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```dotenv
+AUDIT_SERVICE_URL=http://localhost:3001
+AUDIT_SHARED_SECRET=change-me
+AUDIT_REQUEST_TIMEOUT=5
+```
+
+`AUDIT_SHARED_SECRET` must be replaced locally and must match the secret configured by the Node audit service. It is used to generate the HMAC-SHA256 signature sent in `X-Signature`.
+
+## Main API endpoints
+
+All authenticated endpoints use a Sanctum bearer token.
+
+| Method | Endpoint | Authentication | Purpose / restriction |
+|---|---|---|---|
+| `POST` | `/api/login` | Public | Authenticate an admin or staff user and issue a token. |
+| `POST` | `/api/logout` | Bearer token | Revoke the current token. |
+| `GET` | `/api/user` | Bearer token | Return the authenticated user. |
+| `POST` | `/api/public/quote-requests` | Public | Submit a public quote request. |
+| `GET` | `/api/quote-requests` | Bearer token | List, search, filter, sort, and paginate quotes. |
+| `GET` | `/api/quote-requests/{quoteRequest}` | Bearer token | View one non-deleted quote. |
+| `PATCH` | `/api/quote-requests/{quoteRequest}/status` | Bearer token | Admin: any quote. Staff: assigned quotes only. |
+| `PATCH` | `/api/quote-requests/{quoteRequest}/assign` | Admin bearer token | Assign or reassign a quote to a staff user. |
+| `DELETE` | `/api/quote-requests/{quoteRequest}` | Admin bearer token | Soft-delete a quote. |
+
+## Quote statuses
+
+Supported statuses:
+
+- `new`
+- `in_review`
+- `quoted`
+- `closed`
+
+Allowed transitions:
+
+```text
+new -> in_review
+in_review -> quoted
+in_review -> closed
+quoted -> closed
+```
+
+Same-status updates and every other transition return a validation-style `422` response.
+
+## Authorization summary
+
+Admin users can view quotes, update status, assign or reassign staff, and soft-delete quotes.
+
+Staff users can view all quotes and update status only when the quote is assigned to them. Staff cannot assign, reassign, or delete quotes.
+
+## List endpoint parameters
+
+`GET /api/quote-requests` supports:
+
+| Parameter | Description |
+|---|---|
+| `search` | Searches client name, email, and company. |
+| `status` | Filters by a supported quote status. |
+| `assigned_user_id` | Filters by an existing user ID. |
+| `service_type` | Filters by an allowed service type. |
+| `sort_by` | `created_at`, `updated_at`, `client_name`, or `status`. |
+| `sort_direction` | `asc` or `desc`. |
+| `per_page` | Page size from 1 to 100; default is 15. |
+
+Default sorting is `created_at desc`.
+
+## Public anti-abuse controls
+
+Public quote submission includes request validation, a `website` honeypot field, per-IP throttling, and explicit rejection of protected fields such as `status`, `assigned_user_id`, and `deleted_at`.
+
+## Tests
+
+```powershell
+php artisan test
+```
+
+PHPUnit forces SQLite `:memory:` and therefore does not use the configured development MySQL database. Feature tests cover authentication, authorization, quote operations, seeding, audit dispatch, and exact raw-body HMAC signing.
+
+## Important queue behavior
+
+Database mutations complete independently of the external audit service. Successful quote creation, status changes, and assignment changes enqueue audit jobs after database commit. Delivery runs asynchronously, retries transient failures with backoff, and records exhausted jobs in `failed_jobs`.
+
+## AI assistance
+
+AI-assisted development tools were used for implementation guidance and code review. All changes were manually reviewed, tested, and validated.

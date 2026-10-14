@@ -24,7 +24,6 @@ class PublishAuditEvent implements ShouldQueue
     /**
      * @return list<int>
      */
-
     public function backoff(): array
     {
         return [10, 30, 60, 120, 300, 600];
