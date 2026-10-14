@@ -3,14 +3,16 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
     /**
@@ -48,6 +50,7 @@ class User extends Authenticatable
     }
 
     public const ROLE_ADMIN = 'admin';
+
     public const ROLE_STAFF = 'staff';
 
     public function isAdmin(): bool
@@ -58,5 +61,10 @@ class User extends Authenticatable
     public function isStaff(): bool
     {
         return $this->role === self::ROLE_STAFF;
+    }
+
+    public function assignedQuoteRequests(): HasMany
+    {
+        return $this->hasMany(QuoteRequest::class, 'assigned_user_id');
     }
 }
