@@ -1,0 +1,64 @@
+<?php
+
+namespace App\Models;
+
+use App\Enums\QuoteRequestStatus;
+use Database\Factories\QuoteRequestFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class QuoteRequest extends Model
+{
+    /** @use HasFactory<QuoteRequestFactory> */
+    use HasFactory, SoftDeletes;
+
+    public const SERVICE_TYPES = [
+        'web_development',
+        'mobile_app',
+        'crm',
+        'ecommerce',
+        'custom_software',
+    ];
+
+    public const BUDGET_RANGES = [
+        'under_5k',
+        '5k_10k',
+        '10k_25k',
+        '25k_plus',
+    ];
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var list<string>
+     */
+    protected $fillable = [
+        'client_name',
+        'email',
+        'company',
+        'service_type',
+        'budget_range',
+        'message',
+        'status',
+        'assigned_user_id',
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'status' => QuoteRequestStatus::class,
+        ];
+    }
+
+    public function assignedUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_user_id');
+    }
+}
